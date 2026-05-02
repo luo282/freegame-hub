@@ -11,7 +11,8 @@ const ApiService = (() => {
   // CORS 代理列表 - 按优先级排列，自动故障转移
   // 从浏览器跨域请求第三方 API 需要通过 CORS 代理
   const CORS_PROXIES = [
-    'https://cors-proxy.1416272377.workers.dev/?url=',  // 你的 Cloudflare Worker（优先）
+    'https://api.allorigins.win/raw?url=',               // allorigins 公开代理（稳定）
+    'https://corsproxy.io/?',                             // corsproxy.io 公开代理
     'https://api.codetabs.com/v1/proxy?quest=',          // 备用公开代理
   ];
 
