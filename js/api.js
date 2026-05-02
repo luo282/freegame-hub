@@ -8,9 +8,8 @@
 const ApiService = (() => {
   'use strict';
 
-  // CORS 代理列表 - 仅包含经过验证可用的代理
-  // 注意：GamerPower 可直接访问（已在数据源配置中设置 corsProxy: false）
-  // OpenGames 需要代理（默认走代理）
+  // CORS 代理列表 - 经过验证可用的代理
+  // 从浏览器跨域请求第三方 API 需要通过 CORS 代理
   const CORS_PROXIES = [
     'https://api.codetabs.com/v1/proxy?quest=',          // 免费公开代理（已验证可用）
   ];
