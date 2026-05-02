@@ -130,91 +130,80 @@ const DATA_SOURCES = [
   },
 
   // ========================
-  // 数据源 2：OpenGames - 开源免费游戏
+  // 数据源 2：FreeToGame - 免费游戏数据库
   // ========================
   {
-    id: 'opengames',
-    name: '开源游戏',
-    description: '2000+ 开源游戏，GitHub 仓库直接下载',
-    icon: '🔓',
+    id: 'freetogame',
+    name: '免费游戏',
+    description: '400+ 免费游戏，支持多平台多类型筛选',
+    icon: '🎮',
     pageSize: 12,
-    corsProxy: true, // opengames.dev 需要通过 CORS 代理访问
+    corsProxy: false, // FreeToGame API 支持直接访问，无需 CORS 代理
 
     endpoints: {
       list: {
-        url: 'https://opengames.dev/api/games',
+        url: 'https://www.freetogame.com/api/games',
         params: {
-          pageSize: { param: 'pageSize', default: 12 },
-          page: { param: 'page', default: 1 },
-          sort: { param: 'sort', default: 'stars' },
-          order: { param: 'order', default: 'desc' },
+          platform: { param: 'platform', default: 'all' },
+          category: { param: 'category' },
+          'sort-by': { param: 'sort', default: 'release-date' },
         },
-        dataPath: 'data.games',
-        paginationPath: 'meta',
+        dataPath: null, // 直接返回数组
+        paginationPath: null, // 无分页，返回全部
       },
       detail: {
-        url: 'https://opengames.dev/api/games',
+        url: 'https://www.freetogame.com/api/game',
         params: {
-          slug: { param: 'slug', required: true },
+          id: { param: 'id', required: true },
         },
-        dataPath: 'data.game',
+        dataPath: null,
       },
-      search: {
-        url: 'https://opengames.dev/api/search',
-        params: {
-          query: { param: 'query', required: true },
-          pageSize: { param: 'pageSize', default: 12 },
-          page: { param: 'page', default: 1 },
-        },
-        dataPath: 'data.results',
-        paginationPath: 'meta',
-      },
-      stats: {
-        url: 'https://opengames.dev/api/stats',
-        params: {},
-        dataPath: 'data',
-      },
+      search: null, // FreeToGame 不支持搜索，回退到客户端过滤
+      stats: null, // 无统计端点，使用列表长度计算
     },
 
     platforms: [
       { label: '全部', value: 'all' },
+      { label: 'PC (Windows)', value: 'pc' },
+      { label: '浏览器', value: 'browser' },
     ],
 
     sortOptions: [
-      { label: '最多 Star', value: 'stars' },
-      { label: '最近更新', value: 'updatedAt' },
-      { label: '最近创建', value: 'createdAt' },
-      { label: '下载最多', value: 'downloadCount' },
+      { label: '最新发布', value: 'release-date' },
+      { label: '最受欢迎', value: 'popularity' },
+      { label: '字母排序', value: 'alphabetical' },
+      { label: '相关性', value: 'relevance' },
     ],
 
     adapter(rawItem) {
       return {
-        id: rawItem.slug || String(rawItem.id || ''),
+        id: String(rawItem.id),
         title: rawItem.title || '未知游戏',
-        image: null,
-        description: rawItem.description || '暂无描述',
-        platform: (rawItem.platforms || []).join(', ') || 'Cross-platform',
+        image: rawItem.thumbnail || '',
+        description: rawItem.short_description || rawItem.description || '暂无描述',
+        platform: rawItem.platform || 'PC (Windows)',
         genre: rawItem.genre || 'Unknown',
-        openUrl: rawItem.repoUrl || rawItem.homepage || '#',
-        openUrlLabel: 'GitHub 仓库',
-        // 开源游戏特有
-        stars: rawItem.stars || 0,
-        forks: rawItem.forks || 0,
-        language: rawItem.language || 'Unknown',
-        license: rawItem.license || '',
-        topics: rawItem.topics || [],
-        isMultiplayer: rawItem.isMultiplayer || false,
-        downloadCount: rawItem.downloadCount || 0,
-        lastCommitAt: rawItem.lastCommitAt || '',
-        rating: rawItem.stars || 0,
+        openUrl: rawItem.game_url || '#',
+        openUrlLabel: '立即游玩',
+        // 扩展信息
+        publisher: rawItem.publisher || '',
+        developer: rawItem.developer || '',
+        releaseDate: rawItem.release_date || '',
+        freetogameUrl: rawItem.freetogame_profile_url || '',
+        type: rawItem.genre || 'game',
+        status: rawItem.status || 'Live',
+        // FreeToGame 没有星级，用 genre 代替
+        rating: null,
       };
     },
 
     statsAdapter(rawStats) {
+      // FreeToGame 没有统计端点，使用列表数据计算
+      const count = Array.isArray(rawStats) ? rawStats.length : 0;
       return {
-        totalGames: rawStats.totalGames || 0,
+        totalGames: count,
         totalValue: null,
-        extra: `共 ${rawStats.totalGames || 0} 款开源游戏，平均 ${Math.round(rawStats.avgStars || 0)} Stars`,
+        extra: `共 ${count} 款免费游戏，涵盖多种类型和平台`,
       };
     },
   },
