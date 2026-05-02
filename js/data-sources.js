@@ -30,7 +30,7 @@ const DATA_SOURCES = [
     description: 'Epic / Steam / GOG 等平台限时免费游戏',
     icon: '🎁',
     pageSize: 12,
-    corsProxy: false, // GamerPower API 支持直接访问，无需 CORS 代理
+    corsProxy: true, // 从浏览器跨域访问需要 CORS 代理
 
     // API 端点配置
     endpoints: {
@@ -138,7 +138,7 @@ const DATA_SOURCES = [
     description: '400+ 免费游戏，支持多平台多类型筛选',
     icon: '🎮',
     pageSize: 12,
-    corsProxy: false, // FreeToGame API 支持直接访问，无需 CORS 代理
+    corsProxy: true, // FreeToGame API 从浏览器跨域访问需要 CORS 代理
 
     endpoints: {
       list: {
