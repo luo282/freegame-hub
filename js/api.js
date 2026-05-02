@@ -12,7 +12,8 @@ const ApiService = (() => {
   // 自有 Worker 代理优先，公开代理作为备用
   // 部署 Worker 代理：将 cors-proxy-worker.js 部署到 Cloudflare Workers，替换下方 URL
   const CORS_PROXIES = [
-    'https://api.codetabs.com/v1/proxy?quest=',           // codetabs（稳定可用）
+    'https://cors-proxy.1416272377.workers.dev/?url=',    // 自建 Cloudflare Worker（最优先）
+    'https://api.codetabs.com/v1/proxy?quest=',           // codetabs 备用
     'https://corsproxy.io/?',                              // corsproxy.io 备用
     'https://api.allorigins.win/raw?url=',                 // allorigins 备用
   ];
