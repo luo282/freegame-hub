@@ -224,7 +224,7 @@ const DATA_SOURCES = [
     pageSize: 20,
     corsProxy: true,
     // ⚠️ API Key：需要从 https://rawg.io/apidocs 免费注册获取，替换下面的值
-    apiKey: '7c9e6b3b8ef7419e9c5ff42b85f90e42',
+    apiKey: 'b005795a7b0d4c40972e1e3991844304',
 
     endpoints: {
       // 游戏列表（支持分页）
