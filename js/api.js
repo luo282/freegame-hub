@@ -2,15 +2,20 @@
  * API 调用层 - API SERVICE
  * 通用请求模块，读取 DATA_SOURCES 配置
  * 支持：列表、详情、搜索、统计
- * 内置 CORS 代理（可配置/关闭）
+ * 内置 CORS 代理（多代理自动故障转移）
  */
 
 const ApiService = (() => {
   'use strict';
 
-  // CORS 代理配置 - 使用 Cloudflare Pages Functions
-  // Cloudflare Functions 文件路径是 /functions/foo.js，但访问路径是 /foo
-  const CORS_PROXY = '/cors-proxy?url=';
+  // CORS 代理列表 - 按优先级排列，自动故障转移
+  const CORS_PROXIES = [
+    'https://cors-proxy.1416272377.workers.dev/?url=',  // 你的 Cloudflare Worker
+    'https://api.codetabs.com/v1/proxy?quest=',          // 免费公开代理
+  ];
+
+  // 记录上次成功的代理索引（持久化到 sessionStorage）
+  let workingProxyIdx = parseInt(sessionStorage.getItem('workingProxyIdx') || '0', 10);
 
   // 处理 URL：根据数据源配置决定是否使用代理
   function proxyUrl(url, sourceId) {
@@ -20,10 +25,10 @@ const ApiService = (() => {
     if (sourceCors !== undefined) {
       useProxy = sourceCors;
     } else {
-      useProxy = !!CORS_PROXY;
+      useProxy = CORS_PROXIES.length > 0;
     }
     if (!useProxy) return url;
-    const proxy = CORS_PROXY || 'https://api.allorigins.win/raw?url=';
+    const proxy = CORS_PROXIES[workingProxyIdx % CORS_PROXIES.length];
     return proxy + encodeURIComponent(url);
   }
 
@@ -55,22 +60,52 @@ const ApiService = (() => {
   }
 
   async function request(url, controller, sourceId) {
-    const targetUrl = proxyUrl(url, sourceId);
+    const source = DATA_SOURCES.find(s => s.id === sourceId);
+    const sourceCors = source?.corsProxy;
+    const needProxy = sourceCors === undefined ? CORS_PROXIES.length > 0 : sourceCors;
+
+    // 构建所有尝试的 URL 列表
+    const urlsToTry = [];
+    if (needProxy && CORS_PROXIES.length > 0) {
+      // 从上次成功的代理开始尝试
+      for (let i = 0; i < CORS_PROXIES.length; i++) {
+        const idx = (workingProxyIdx + i) % CORS_PROXIES.length;
+        urlsToTry.push(CORS_PROXIES[idx] + encodeURIComponent(url));
+      }
+    }
+    // 最后尝试直接请求（不走代理）
+    urlsToTry.push(url);
+
     const fetchOptions = {};
     if (controller?.signal) {
       fetchOptions.signal = controller.signal;
     }
     fetchOptions.headers = { 'Accept': 'application/json' };
 
-    const response = await fetch(targetUrl, fetchOptions);
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw new Error('请求过于频繁，请稍后再试');
+    let lastError = null;
+    for (let i = 0; i < urlsToTry.length; i++) {
+      try {
+        const response = await fetch(urlsToTry[i], fetchOptions);
+        if (!response.ok) {
+          if (response.status === 429) {
+            throw new Error('请求过于频繁，请稍后再试');
+          }
+          lastError = new Error(`请求失败 (${response.status})`);
+          continue;
+        }
+        // 成功了，记住这个代理
+        if (needProxy && i < CORS_PROXIES.length) {
+          const idx = (workingProxyIdx + i) % CORS_PROXIES.length;
+          workingProxyIdx = idx;
+          sessionStorage.setItem('workingProxyIdx', String(idx));
+        }
+        return response.json();
+      } catch (e) {
+        lastError = e;
+        continue;
       }
-      throw new Error(`请求失败 (${response.status})`);
     }
-    return response.json();
+    throw lastError || new Error('所有代理均失败');
   }
 
   async function fetchGames(sourceId, filters = {}, signal) {
