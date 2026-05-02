@@ -678,6 +678,78 @@ a:hover {
   transform: translateY(-2px);
 }
 
+/* ==================== 翻页导航 ==================== */
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pagination-page {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.page-btn:hover:not(.disabled):not(.active) {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-card);
+}
+
+.page-btn.active {
+  color: white;
+  background: var(--gradient-primary);
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25);
+}
+
+.page-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.page-ellipsis {
+  color: var(--text-muted);
+  padding: 0 4px;
+  font-size: 0.85rem;
+}
+
 /* ==================== 加载指示器 ==================== */
 .loading-indicator {
   display: none;
@@ -916,6 +988,62 @@ a:hover {
 .btn-download:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
+  color: white;
+}
+
+/* ==================== 商店链接组 ==================== */
+.store-links {
+  margin-top: 16px;
+}
+
+.store-links-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.store-links-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.store-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.store-link-btn:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-card);
+  transform: translateY(-1px);
+  color: white;
+}
+
+.store-link-btn .store-icon {
+  font-size: 1rem;
+}
+
+.store-link-btn.primary-store {
+  color: white;
+  background: var(--gradient-primary);
+  border-color: transparent;
+}
+
+.store-link-btn.primary-store:hover {
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
   color: white;
 }
 
