@@ -150,6 +150,63 @@ const UI = (() => {
     container.innerHTML = `<button id="load-more-btn" class="btn-load-more">加载更多</button>`;
   }
 
+  // ==================== 翻页导航（服务端分页模式） ====================
+  function renderPagination(currentPage, totalPages, totalItems) {
+    const container = $('#load-more-container');
+
+    if (totalPages <= 1 || currentPage > totalPages) {
+      container.innerHTML = '';
+      return;
+    }
+
+    // 计算显示的页码范围（最多显示 7 个页码按钮）
+    let startPage = Math.max(1, currentPage - 3);
+    let endPage = Math.min(totalPages, startPage + 6);
+    if (endPage - startPage < 6) {
+      startPage = Math.max(1, endPage - 6);
+    }
+
+    // 构建页码按钮
+    let pagesHtml = '';
+
+    // 上一页
+    pagesHtml += `<button class="page-btn ${currentPage <= 1 ? 'disabled' : ''}" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>&laquo; 上一页</button>`;
+
+    // 第一页 + 省略号
+    if (startPage > 1) {
+      pagesHtml += `<button class="page-btn" data-page="1">1</button>`;
+      if (startPage > 2) {
+        pagesHtml += `<span class="page-ellipsis">...</span>`;
+      }
+    }
+
+    // 页码
+    for (let i = startPage; i <= endPage; i++) {
+      pagesHtml += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+
+    // 省略号 + 最后一页
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pagesHtml += `<span class="page-ellipsis">...</span>`;
+      }
+      pagesHtml += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    // 下一页
+    pagesHtml += `<button class="page-btn ${currentPage >= totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>下一页 &raquo;</button>`;
+
+    container.innerHTML = `
+      <div class="pagination-wrapper">
+        <span class="pagination-info">共 ${formatNumber(totalItems)} 款游戏</span>
+        <div class="pagination-controls">
+          ${pagesHtml}
+        </div>
+        <span class="pagination-page">第 ${currentPage} / ${totalPages} 页</span>
+      </div>
+    `;
+  }
+
   // ==================== 详情弹窗 ====================
   function renderModal(game, related = []) {
     const modal = $('#modal');
@@ -171,6 +228,9 @@ const UI = (() => {
       </div>
     ` : '';
 
+    // 商店链接（RAWG 等多平台游戏）
+    const storeLinksHtml = buildStoreLinksHtml(game);
+
     modal.innerHTML = `
       <div class="modal-overlay"></div>
       <div class="modal-content">
@@ -183,19 +243,25 @@ const UI = (() => {
             <span class="tag tag-genre">${escapeHtml(game.genre)}</span>
             ${game.worth ? `<span class="tag tag-worth">${escapeHtml(game.worth)}</span>` : ''}
             ${game.stars ? `<span class="tag tag-stars">⭐ ${formatNumber(game.stars)}</span>` : ''}
+            ${game.rating ? `<span class="tag tag-stars">评分 ${game.rating.toFixed(1)}</span>` : ''}
+            ${game.metacritic ? `<span class="tag tag-worth">Metacritic ${game.metacritic}</span>` : ''}
             ${game.language ? `<span class="tag tag-lang">${escapeHtml(game.language)}</span>` : ''}
             ${game.isMultiplayer ? `<span class="tag tag-multi">多人</span>` : ''}
+            ${game.playtime ? `<span class="tag tag-lang">⏱ 约 ${game.playtime} 小时</span>` : ''}
           </div>
           <div class="modal-description">${escapeHtml(game.description)}</div>
 
           ${game.publisher ? `<div class="modal-info-row"><span class="info-label">发行商</span><span>${escapeHtml(game.publisher)}</span></div>` : ''}
           ${game.developer ? `<div class="modal-info-row"><span class="info-label">开发商</span><span>${escapeHtml(game.developer)}</span></div>` : ''}
+          ${game.releaseDate ? `<div class="modal-info-row"><span class="info-label">发行日期</span><span>${game.releaseDate}</span></div>` : ''}
           ${game.license ? `<div class="modal-info-row"><span class="info-label">许可证</span><span>${escapeHtml(game.license)}</span></div>` : ''}
           ${game.endDate ? `<div class="modal-info-row"><span class="info-label">截止日期</span><span class="deadline-text">⏰ ${formatDate(game.endDate)}</span></div>` : ''}
           ${game.forks !== undefined ? `<div class="modal-info-row"><span class="info-label">Forks</span><span>${formatNumber(game.forks)}</span></div>` : ''}
           ${game.lastCommitAt ? `<div class="modal-info-row"><span class="info-label">最后更新</span><span>${formatDate(game.lastCommitAt)}</span></div>` : ''}
 
           ${game.instructions ? `<div class="modal-instructions"><strong>领取说明：</strong>${escapeHtml(game.instructions)}</div>` : ''}
+
+          ${storeLinksHtml}
 
           <a href="${escapeHtml(game.openUrl)}" target="_blank" rel="noopener noreferrer" class="btn-download">
             ${game.openUrlLabel || '前往下载'} ↗
@@ -208,6 +274,48 @@ const UI = (() => {
 
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+  }
+
+  // 构建商店链接 HTML
+  function buildStoreLinksHtml(game) {
+    const stores = game.stores;
+    if (!stores || !Array.isArray(stores) || stores.length === 0) return '';
+
+    const storeIcons = {
+      steam: '🔵',
+      gog: '🟣',
+      epic: '⬛',
+      humble: '🟠',
+      playstation: '🔵',
+      xbox: '🟢',
+      nintendo: '🔴',
+      apple: '⚫',
+      google: '🟡',
+      android: '🟢',
+      ios: '⚫',
+    };
+
+    return `
+      <div class="store-links">
+        <span class="store-links-label">可在以下平台获取：</span>
+        <div class="store-links-list">
+          ${stores.map((store, idx) => {
+            const name = (store.name || store).toLowerCase();
+            const url = store.url || '#';
+            // 找匹配的图标
+            let icon = '🎮';
+            for (const [key, emoji] of Object.entries(storeIcons)) {
+              if (name.includes(key)) { icon = emoji; break; }
+            }
+            const isPrimary = idx === 0 && name.includes('steam');
+            return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="store-link-btn ${isPrimary ? 'primary-store' : ''}">
+              <span class="store-icon">${icon}</span>
+              ${escapeHtml(store.name || store)}
+            </a>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }
 
   function closeModal() {
@@ -300,6 +408,7 @@ const UI = (() => {
     renderGames,
     renderSkeleton,
     renderLoadMore,
+    renderPagination,
     renderModal,
     closeModal,
     showLoading,
