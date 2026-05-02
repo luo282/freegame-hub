@@ -327,6 +327,11 @@ const DATA_SOURCES = [
         // RAWG 特有字段
         esrbRating: rawItem.esrb_rating?.name || '',
         tags: rawItem.tags?.map(t => t.name).filter(Boolean).join(', ') || '',
+      // 商店链接（detail API 才包含完整数据）
+      stores: (rawItem.stores || []).map(s => ({
+        name: s.store?.name || 'Unknown',
+        url: s.url || `https://rawg.io/games/${rawItem.slug || rawItem.id}`,
+      })),
       };
     },
 
