@@ -30,6 +30,7 @@ const DATA_SOURCES = [
     description: 'Epic / Steam / GOG 等平台限时免费游戏',
     icon: '🎁',
     pageSize: 12,
+    corsProxy: false, // GamerPower API 支持直接访问，无需 CORS 代理
 
     // API 端点配置
     endpoints: {
@@ -137,6 +138,7 @@ const DATA_SOURCES = [
     description: '2000+ 开源游戏，GitHub 仓库直接下载',
     icon: '🔓',
     pageSize: 12,
+    corsProxy: true, // opengames.dev 需要通过 CORS 代理访问
 
     endpoints: {
       list: {
