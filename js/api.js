@@ -1,15 +1,17 @@
 /**
- * API 璋冪敤灞?- API SERVICE
- * 閫氱敤璇锋眰妯″潡锛岃鍙?DATA_SOURCES 閰嶇疆
- * 鏀寔锛氬垪琛ㄣ€佽鎯呫€佹悳绱€佺粺璁? * 鍐呯疆 CORS 浠ｇ悊锛堝彲閰嶇疆/鍏抽棴锛? */
+ * API 调用层 - API SERVICE
+ * 通用请求模块，读取 DATA_SOURCES 配置
+ * 支持：列表、详情、搜索、统计
+ * 内置 CORS 代理（可配置/关闭）
+ */
 
 const ApiService = (() => {
   'use strict';
 
-  // CORS 浠ｇ悊閰嶇疆 - 浣跨敤 Vercel 鍐呯疆浠ｇ悊
-  const CORS_PROXY = '/api/cors-proxy?url=';
+  // CORS 代理配置 - 使用 Cloudflare Pages Functions
+  const CORS_PROXY = '/functions/cors-proxy?url=';
 
-  // 澶勭悊 URL锛氭牴鎹暟鎹簮閰嶇疆鍐冲畾鏄惁浣跨敤浠ｇ悊
+  // 处理 URL：根据数据源配置决定是否使用代理
   function proxyUrl(url, sourceId) {
     const source = DATA_SOURCES.find(s => s.id === sourceId);
     const sourceCors = source?.corsProxy;
@@ -28,7 +30,7 @@ const ApiService = (() => {
 
   function getSource(sourceId) {
     const source = DATA_SOURCES.find(s => s.id === sourceId);
-    if (!source) throw new Error(`鏁版嵁婧?"${sourceId}" 涓嶅瓨鍦╜);
+    if (!source) throw new Error(`数据源 "${sourceId}" 不存在`);
     return source;
   }
 
@@ -63,9 +65,9 @@ const ApiService = (() => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        throw new Error('璇锋眰杩囦簬棰戠箒锛岃绋嶅悗鍐嶈瘯');
+        throw new Error('请求过于频繁，请稍后再试');
       }
-      throw new Error(`璇锋眰澶辫触 (${response.status})`);
+      throw new Error(`请求失败 (${response.status})`);
     }
     return response.json();
   }
