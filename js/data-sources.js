@@ -218,8 +218,8 @@ const DATA_SOURCES = [
   // ========================
   {
     id: 'rawg',
-    name: '全部游戏',
-    description: 'RAWG 全球游戏数据库，50万+ 游戏数据',
+    name: '免费游戏',
+    description: 'RAWG 免费游戏数据库，精选免费游戏',
     icon: '🌐',
     pageSize: 20,
     corsProxy: true,
@@ -238,7 +238,7 @@ const DATA_SOURCES = [
           ordering: { param: 'ordering' },
           platforms: { param: 'platforms' },
           genres: { param: 'genres' },
-          tags: { param: 'tags' },
+          tags: { param: 'tags', default: '23' },
           dates: { param: 'dates' },
         },
         dataPath: 'results',
@@ -262,15 +262,18 @@ const DATA_SOURCES = [
           page_size: { param: 'page_size', default: 20 },
           page: { param: 'page', default: 1 },
           ordering: { param: 'ordering' },
+          tags: { param: 'tags', default: '23' },
         },
         dataPath: 'results',
         paginationPath: 'count',
       },
-      // 统计数据（使用 genres 端点获取类型数量作为统计）
+      // 统计数据（使用 games 端点 + tags=23 过滤免费游戏）
       stats: {
-        url: 'https://api.rawg.io/api/genres',
+        url: 'https://api.rawg.io/api/games',
         params: {
           key: { param: 'key', required: true },
+          tags: { param: 'tags', default: '23' },
+          page_size: { param: 'page_size', default: 1 },
         },
         dataPath: 'count',
       },
@@ -337,12 +340,11 @@ const DATA_SOURCES = [
 
     // 统计数据适配器
     statsAdapter(rawStats) {
-      // rawStats 是 genres 的 count（类型总数）
-      const genresCount = typeof rawStats === 'number' ? rawStats : 0;
+      const count = typeof rawStats === 'number' ? rawStats : 0;
       return {
-        totalGames: '500000+',
+        totalGames: count.toLocaleString(),
         totalValue: null,
-        extra: `覆盖 ${genresCount} 种游戏类型，50万+ 款游戏数据`,
+        extra: `共 ${count} 款免费游戏`,
       };
     },
   },
