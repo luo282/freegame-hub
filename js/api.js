@@ -156,18 +156,13 @@ const ApiService = (() => {
       delete queryParams.sort;
     }
 
-    if (sourceId === 'opengames') {
-      const sortMap = {
-        stars: { sort: 'stars', order: 'desc' },
-        updatedAt: { sort: 'updatedAt', order: 'desc' },
-        createdAt: { sort: 'createdAt', order: 'desc' },
-        downloadCount: { sort: 'downloadCount', order: 'desc' },
-      };
-      const mapped = sortMap[filters.sort] || sortMap.stars;
-      queryParams.sort = mapped.sort;
-      queryParams.order = mapped.order;
-      queryParams.pageSize = source.pageSize;
-      queryParams.page = filters.page || 1;
+    if (sourceId === 'freetogame') {
+      // FreeToGame API 参数映射
+      queryParams.platform = filters.platform || 'all';
+      queryParams['sort-by'] = filters.sort || 'release-date';
+      if (filters.genre) {
+        queryParams.category = filters.genre;
+      }
     }
 
     const endpoint = source.endpoints.list;
@@ -200,7 +195,7 @@ const ApiService = (() => {
     const endpoint = source.endpoints.search;
     const queryParams = { query, ...filters };
 
-    if (sourceId === 'opengames') {
+    if (sourceId === 'freetogame') {
       queryParams.pageSize = source.pageSize;
       queryParams.page = filters.page || 1;
     }
@@ -229,17 +224,16 @@ const ApiService = (() => {
     const endpoint = source.endpoints.detail;
 
     let url;
-    if (sourceId === 'opengames') {
-      url = `${endpoint.url}/${gameId}`;
+    if (sourceId === 'freetogame') {
+      // FreeToGame 使用 ?id= 查询参数
+      url = buildUrl(endpoint.url, endpoint.params, { id: gameId });
     } else {
       const params = {};
       params[endpoint.params.id.param] = gameId;
       url = buildUrl(endpoint.url, endpoint.params, params);
     }
 
-    if (sourceId === 'opengames') {
-      url += '?include=related';
-    }
+    // FreeToGame 的 detail 不需要 include=related
 
     const rawResponse = await request(url, controller, sourceId);
     const rawData = getByPath(rawResponse, endpoint.dataPath);
