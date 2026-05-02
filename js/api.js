@@ -9,7 +9,8 @@ const ApiService = (() => {
   'use strict';
 
   // CORS 代理配置 - 使用 Cloudflare Pages Functions
-  const CORS_PROXY = '/functions/cors-proxy?url=';
+  // Cloudflare Functions 文件路径是 /functions/foo.js，但访问路径是 /foo
+  const CORS_PROXY = '/cors-proxy?url=';
 
   // 处理 URL：根据数据源配置决定是否使用代理
   function proxyUrl(url, sourceId) {
