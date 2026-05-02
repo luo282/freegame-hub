@@ -47,8 +47,34 @@ const ApiService = (() => {
     return path.split('.').reduce((acc, key) => acc?.[key], obj);
   }
 
-  function buildUrl(baseUrl, paramConfig, filters) {
-    const url = new URL(baseUrl);
+  function buildUrl(baseUrl, paramConfig, filters, source) {
+    let urlStr = baseUrl;
+
+    // 支持路径参数如 {id}，例如 https://api.rawg.io/api/games/{id}
+    if (urlStr.includes('{')) {
+      for (const [urlParam, config] of Object.entries(paramConfig)) {
+        const placeholder = `{${config.param}}`;
+        if (urlStr.includes(placeholder)) {
+          const value = filters[config.param];
+          if (value !== undefined && value !== null && value !== '') {
+            urlStr = urlStr.replace(placeholder, encodeURIComponent(value));
+          }
+        }
+      }
+    }
+
+    const url = new URL(urlStr);
+
+    // 从数据源配置注入 API Key
+    if (source?.apiKey) {
+      for (const [urlParam, config] of Object.entries(paramConfig)) {
+        if (config.param === 'key' && !filters['key']) {
+          url.searchParams.set(urlParam, source.apiKey);
+          break;
+        }
+      }
+    }
+
     for (const [urlParam, config] of Object.entries(paramConfig)) {
       const filterKey = config.param;
       const value = filters[filterKey];
@@ -166,17 +192,42 @@ const ApiService = (() => {
       }
     }
 
+    // RAWG 参数映射：sort → ordering，platform → platforms
+    if (sourceId === 'rawg') {
+      if (filters.sort) {
+        queryParams.ordering = filters.sort;
+        delete queryParams.sort;
+      }
+      if (filters.platform) {
+        queryParams.platforms = filters.platform;
+        delete queryParams.platform;
+      }
+      queryParams.page_size = source.pageSize;
+      queryParams.page = filters.page || 1;
+    }
+
     const endpoint = source.endpoints.list;
-    url = buildUrl(endpoint.url, endpoint.params, queryParams);
+    url = buildUrl(endpoint.url, endpoint.params, queryParams, source);
     rawResponse = await request(url, controller, sourceId);
 
     const rawGames = getByPath(rawResponse, endpoint.dataPath);
     games = Array.isArray(rawGames) ? rawGames : (rawGames ? [rawGames] : []);
     const adaptedGames = games.map(item => source.adapter(item));
 
-    const pagination = endpoint.paginationPath
-      ? getByPath(rawResponse, endpoint.paginationPath)
-      : null;
+    // 分页处理
+    let pagination = null;
+    if (endpoint.paginationPath) {
+      const totalCount = getByPath(rawResponse, endpoint.paginationPath);
+      // RAWG: count 是总数，next 为 null 表示没有更多
+      if (sourceId === 'rawg') {
+        pagination = {
+          total: totalCount || adaptedGames.length,
+          hasMore: !!rawResponse.next,  // next 不为 null 表示有下一页
+        };
+      } else {
+        pagination = getByPath(rawResponse, endpoint.paginationPath);
+      }
+    }
 
     return {
       games: adaptedGames,
@@ -194,23 +245,42 @@ const ApiService = (() => {
     }
 
     const endpoint = source.endpoints.search;
-    const queryParams = { query, ...filters };
+    const queryParams = { ...filters };
 
     if (sourceId === 'freetogame') {
       queryParams.pageSize = source.pageSize;
       queryParams.page = filters.page || 1;
     }
 
-    const url = buildUrl(endpoint.url, endpoint.params, queryParams);
+    // RAWG 搜索：使用 search 参数
+    if (sourceId === 'rawg') {
+      queryParams.search = query;
+      queryParams.page_size = source.pageSize;
+      queryParams.page = filters.page || 1;
+    } else {
+      queryParams.query = query;
+    }
+
+    const url = buildUrl(endpoint.url, endpoint.params, queryParams, source);
     const rawResponse = await request(url, controller, sourceId);
 
     const rawResults = getByPath(rawResponse, endpoint.dataPath);
     const results = Array.isArray(rawResults) ? rawResults : (rawResults ? [rawResults] : []);
     const adaptedResults = results.map(item => source.adapter(item));
 
-    const pagination = endpoint.paginationPath
-      ? getByPath(rawResponse, endpoint.paginationPath)
-      : null;
+    // 分页处理
+    let pagination = null;
+    if (endpoint.paginationPath) {
+      const totalCount = getByPath(rawResponse, endpoint.paginationPath);
+      if (sourceId === 'rawg') {
+        pagination = {
+          total: totalCount || adaptedResults.length,
+          hasMore: !!rawResponse.next,
+        };
+      } else {
+        pagination = getByPath(rawResponse, endpoint.paginationPath);
+      }
+    }
 
     return {
       games: adaptedResults,
@@ -227,18 +297,29 @@ const ApiService = (() => {
     let url;
     if (sourceId === 'freetogame') {
       // FreeToGame 使用 ?id= 查询参数
-      url = buildUrl(endpoint.url, endpoint.params, { id: gameId });
+      url = buildUrl(endpoint.url, endpoint.params, { id: gameId }, source);
+    } else if (sourceId === 'rawg') {
+      // RAWG 使用路径参数 /games/{id}
+      url = buildUrl(endpoint.url, endpoint.params, { id: gameId }, source);
     } else {
       const params = {};
       params[endpoint.params.id.param] = gameId;
-      url = buildUrl(endpoint.url, endpoint.params, params);
+      url = buildUrl(endpoint.url, endpoint.params, params, source);
     }
 
-    // FreeToGame 的 detail 不需要 include=related
-
     const rawResponse = await request(url, controller, sourceId);
-    const rawData = getByPath(rawResponse, endpoint.dataPath);
-    const relatedRaw = getByPath(rawResponse, 'data.related');
+
+    // RAWG 详情响应直接是游戏对象（不包裹在 data 中）
+    let rawData;
+    if (sourceId === 'rawg') {
+      rawData = rawResponse;  // 直接就是游戏数据
+    } else {
+      rawData = getByPath(rawResponse, endpoint.dataPath);
+    }
+
+    const relatedRaw = sourceId === 'rawg'
+      ? null  // RAWG 没有 related 字段
+      : getByPath(rawResponse, 'data.related');
 
     return {
       game: source.adapter(rawData),
@@ -251,7 +332,7 @@ const ApiService = (() => {
     const endpoint = source.endpoints.stats;
     if (!endpoint) return null;
 
-    const url = buildUrl(endpoint.url, endpoint.params, filters);
+    const url = buildUrl(endpoint.url, endpoint.params, filters, source);
     const rawResponse = await request(url, null, sourceId);
     const rawData = getByPath(rawResponse, endpoint.dataPath);
     return source.statsAdapter ? source.statsAdapter(rawData) : rawData;
