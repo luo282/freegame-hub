@@ -8,10 +8,11 @@
 const ApiService = (() => {
   'use strict';
 
-  // CORS 代理列表 - 按优先级排列，自动故障转移
+  // CORS 代理列表 - 仅包含经过验证可用的代理
+  // 注意：GamerPower 可直接访问（已在数据源配置中设置 corsProxy: false）
+  // OpenGames 需要代理（默认走代理）
   const CORS_PROXIES = [
-    'https://cors-proxy.1416272377.workers.dev/?url=',  // 你的 Cloudflare Worker
-    'https://api.codetabs.com/v1/proxy?quest=',          // 免费公开代理
+    'https://api.codetabs.com/v1/proxy?quest=',          // 免费公开代理（已验证可用）
   ];
 
   // 记录上次成功的代理索引（持久化到 sessionStorage）
@@ -59,6 +60,9 @@ const ApiService = (() => {
     return url.toString();
   }
 
+  // 请求超时时间（毫秒）
+  const FETCH_TIMEOUT = 15000;
+
   async function request(url, controller, sourceId) {
     const source = DATA_SOURCES.find(s => s.id === sourceId);
     const sourceCors = source?.corsProxy;
@@ -76,16 +80,24 @@ const ApiService = (() => {
     // 最后尝试直接请求（不走代理）
     urlsToTry.push(url);
 
-    const fetchOptions = {};
-    if (controller?.signal) {
-      fetchOptions.signal = controller.signal;
-    }
-    fetchOptions.headers = { 'Accept': 'application/json' };
-
     let lastError = null;
     for (let i = 0; i < urlsToTry.length; i++) {
+      // 为每次尝试创建独立的 AbortController（支持超时和取消）
+      const attemptController = new AbortController();
+      const timeoutId = setTimeout(() => attemptController.abort(), FETCH_TIMEOUT);
+
+      // 如果外部传入了 signal，在取消时也中止当前尝试
+      if (controller?.signal) {
+        controller.signal.addEventListener('abort', () => attemptController.abort());
+      }
+
       try {
-        const response = await fetch(urlsToTry[i], fetchOptions);
+        const response = await fetch(urlsToTry[i], {
+          signal: attemptController.signal,
+          headers: { 'Accept': 'application/json' },
+        });
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
           if (response.status === 429) {
             throw new Error('请求过于频繁，请稍后再试');
@@ -93,15 +105,37 @@ const ApiService = (() => {
           lastError = new Error(`请求失败 (${response.status})`);
           continue;
         }
+
+        // 检查返回的内容类型，过滤掉 HTML 错误页面
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) {
+          lastError = new Error('返回了非 JSON 内容（可能是代理错误页面）');
+          continue;
+        }
+
+        const text = await response.text();
+        // 尝试解析 JSON，过滤掉非 JSON 响应
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch (parseErr) {
+          lastError = new Error('返回的内容不是有效的 JSON');
+          continue;
+        }
+
         // 成功了，记住这个代理
         if (needProxy && i < CORS_PROXIES.length) {
           const idx = (workingProxyIdx + i) % CORS_PROXIES.length;
           workingProxyIdx = idx;
           sessionStorage.setItem('workingProxyIdx', String(idx));
         }
-        return response.json();
+        return json;
       } catch (e) {
         lastError = e;
+        // 区分超时错误
+        if (e.name === 'AbortError') {
+          lastError = new Error('请求超时，请检查网络连接');
+        }
         continue;
       }
     }
