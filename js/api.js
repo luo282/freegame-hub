@@ -8,10 +8,11 @@
 const ApiService = (() => {
   'use strict';
 
-  // CORS 代理列表 - 经过验证可用的代理
+  // CORS 代理列表 - 按优先级排列，自动故障转移
   // 从浏览器跨域请求第三方 API 需要通过 CORS 代理
   const CORS_PROXIES = [
-    'https://api.codetabs.com/v1/proxy?quest=',          // 免费公开代理（已验证可用）
+    'https://cors-proxy.1416272377.workers.dev/?url=',  // 你的 Cloudflare Worker（优先）
+    'https://api.codetabs.com/v1/proxy?quest=',          // 备用公开代理
   ];
 
   // 记录上次成功的代理索引（持久化到 sessionStorage）
