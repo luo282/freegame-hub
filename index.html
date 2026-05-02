@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FreeGame Hub - 免费游戏搜索与下载</title>
+  <meta name="description" content="发现限时免费游戏和开源游戏，一键搜索、一键下载。Epic、Steam、GOG 等平台免费游戏聚合。">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="header">
+    <div class="container">
+      <div class="header-inner">
+        <div class="logo">
+          <span class="logo-icon">🎮</span>
+          <span class="logo-text">FreeGame <span class="logo-highlight">Hub</span></span>
+        </div>
+        <div class="header-actions">
+          <a href="https://github.com" target="_blank" class="btn-github" title="GitHub">
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero 区域 -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">
+        发现<span class="gradient-text">免费游戏</span>的乐园
+      </h1>
+      <p class="hero-subtitle">搜索、发现、下载 — 汇聚全网免费游戏资源</p>
+
+      <!-- 搜索栏 -->
+      <div class="search-wrapper">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="search-input" class="search-input"
+               placeholder="搜索游戏名称、类型、平台..." autocomplete="off">
+        <button id="search-clear" class="search-clear" aria-label="清除搜索">&times;</button>
+      </div>
+      <p id="search-hint" class="search-hint"></p>
+    </div>
+  </section>
+
+  <!-- 主内容区 -->
+  <main class="main">
+    <div class="container">
+      <!-- 数据源 Tab -->
+      <nav id="source-tabs" class="source-tabs" aria-label="数据源切换"></nav>
+
+      <!-- 筛选工具栏 -->
+      <div class="toolbar">
+        <div class="toolbar-section">
+          <span class="toolbar-label">平台</span>
+          <div id="platform-filters" class="filter-group"></div>
+        </div>
+        <div class="toolbar-section">
+          <span class="toolbar-label">排序</span>
+          <div id="sort-options" class="filter-group"></div>
+        </div>
+      </div>
+
+      <!-- 统计栏 -->
+      <div id="stats-bar" class="stats-bar"></div>
+
+      <!-- 游戏网格 -->
+      <div id="games-grid" class="games-grid"></div>
+
+      <!-- 加载更多 -->
+      <div id="load-more-container" class="load-more-container"></div>
+
+      <!-- 加载指示器 -->
+      <div id="loading-indicator" class="loading-indicator">
+        <div class="spinner"></div>
+        <span>加载中...</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <div class="container">
+      <p>FreeGame Hub — 免费游戏聚合平台</p>
+      <p class="footer-links">
+        数据来源：
+        <a href="https://www.gamerpower.com" target="_blank" rel="noopener">GamerPower</a> ·
+        <a href="https://opengames.dev" target="_blank" rel="noopener">OpenGames</a>
+      </p>
+      <p class="footer-note">部署在 GitHub Pages · 数据源可自由配置 · 请支持正版游戏</p>
+    </div>
+  </footer>
+
+  <!-- 详情弹窗 -->
+  <div id="modal" class="modal" role="dialog" aria-modal="true"></div>
+
+  <!-- 脚本 -->
+  <script src="js/data-sources.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
