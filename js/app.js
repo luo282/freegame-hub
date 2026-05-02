@@ -48,6 +48,12 @@ const App = (() => {
     loadStats();
   }
 
+  // 判断当前数据源是否使用服务端分页（而非 "load more" 追加）
+  function usesServerPagination() {
+    const source = ApiService.getSource(state.currentSourceId);
+    return source.endpoints.list.paginationPath && source.pageSize > 0;
+  }
+
   // ==================== 事件绑定 ====================
   function bindEvents() {
     // 数据源切换
@@ -113,6 +119,17 @@ const App = (() => {
     UI.$('#load-more-container').addEventListener('click', (e) => {
       if (e.target.closest('#load-more-btn')) {
         loadMore();
+      }
+    });
+
+    // 翻页导航（服务端分页模式）
+    UI.$('#load-more-container').addEventListener('click', (e) => {
+      const pageBtn = e.target.closest('.page-btn');
+      if (pageBtn) {
+        const page = parseInt(pageBtn.dataset.page, 10);
+        if (page && page !== state.currentPage) {
+          goToPage(page);
+        }
       }
     });
 
@@ -196,7 +213,15 @@ const App = (() => {
       state.total = result.rawTotal;
 
       UI.renderGames(result.games);
-      UI.renderLoadMore(state.hasMore);
+
+      if (usesServerPagination()) {
+        // 服务端分页：显示页码导航
+        const pageSize = ApiService.getSource(state.currentSourceId).pageSize;
+        UI.renderPagination(state.currentPage, Math.ceil(state.total / pageSize), state.total);
+      } else {
+        // 无分页数据源：显示 "加载更多" 按钮
+        UI.renderLoadMore(state.hasMore);
+      }
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('加载失败:', err);
@@ -269,9 +294,16 @@ const App = (() => {
         // API 支持搜索
         state.games = result.games;
         state.hasMore = result.pagination?.hasMore || false;
+        state.total = result.rawTotal;
         UI.renderGames(result.games);
-        UI.renderLoadMore(state.hasMore);
         UI.updateSearchHint(result.games.length, query);
+
+        if (usesServerPagination()) {
+          const pageSize = ApiService.getSource(state.currentSourceId).pageSize;
+          UI.renderPagination(state.currentPage, Math.ceil(state.total / pageSize), state.total);
+        } else {
+          UI.renderLoadMore(state.hasMore);
+        }
         return;
       }
     } catch (err) {
@@ -351,10 +383,55 @@ const App = (() => {
     loadData();
   }
 
+  // ==================== 跳转到指定页 ====================
+  async function goToPage(page) {
+    if (state.isLoading) return;
+    state.currentPage = page;
+    state.isLoading = true;
+    UI.renderSkeleton();
+
+    if (abortController) abortController.abort();
+    abortController = new AbortController();
+
+    try {
+      const result = await ApiService.fetchGames(
+        state.currentSourceId,
+        {
+          platform: state.currentPlatform,
+          sort: state.currentSort,
+          page: state.currentPage,
+        },
+        abortController.signal
+      );
+
+      state.games = result.games;
+      state.allGames = result.games;
+      state.hasMore = result.pagination?.hasMore || false;
+      state.total = result.rawTotal;
+
+      UI.renderGames(result.games);
+
+      const pageSize = ApiService.getSource(state.currentSourceId).pageSize;
+      const totalPages = Math.ceil(state.total / pageSize);
+      UI.renderPagination(state.currentPage, totalPages, state.total);
+
+      // 滚动到顶部
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      console.error('翻页失败:', err);
+      UI.showError(err.message || '加载失败，请稍后重试');
+    } finally {
+      state.isLoading = false;
+      abortController = null;
+    }
+  }
+
   // 公共 API
   return {
     init,
     retry,
+    goToPage,
     state,
   };
 })();
